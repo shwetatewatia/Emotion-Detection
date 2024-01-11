@@ -1,32 +1,29 @@
 from flask import Flask, render_template, Response
+from imutils.video import VideoStream
 import cv2
+import imutils
 import numpy as np
-from threading import Thread
-import librosa
-import tensorflow as tf
-from tensorflow.keras.models import load_model, model_from_json
 import pyaudio
-
-import tkinter as tk
+import librosa
+from tensorflow.keras.models import load_model, model_from_json
+from scipy.spatial import distance as dist
+from imutils import face_utils
+from threading import Thread
 from PIL import Image, ImageTk
 
-from scipy.spatial import distance as dist
-from imutils.video import VideoStream
 from imutils import face_utils
 from threading import Thread
 import argparse
-import imutils
 import time
 import dlib
+import cv2
+
+
+
 app = Flask(__name__)
 
-
-
-labels = {0: "Angry", 1: "Disgust", 2: "Fear", 3: "Happy", 4: "Neutral", 5: "Sad", 6: "Surprise"}
-EMOTIONS_LIST = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
-
+# ... (Paste your existing code here, excluding the Tkinter-related parts)
 def ExpressionModel(json_file, weights_file):
-    # Your existing ExpressionModel code...
     with open(json_file,"r") as file:
         loaded_model_json = file.read()
         model = model_from_json(loaded_model_json)
@@ -36,17 +33,17 @@ def ExpressionModel(json_file, weights_file):
 
     return model
 
+
 # Load pre-trained facial emotion recognition model
-facial_emotion_model = ExpressionModel('model_optimal_facial_emotion.json', 'model_weights_optimal_facial_emotion.h5')
+facial_emotion_model = ExpressionModel('model_optimal_facial_emotion.json','model_weights_optimal_facial_emotion.h5')
 
 # Load pre-trained speech emotion recognition model
-speech_emotion_model = ExpressionModel("model_voice_emotion.json", "model_voice_emotion.h5")
+speech_emotion_model = ExpressionModel("model_voice_emotion.json","model_voice_emotion.h5")
+
 
 # Create VideoCapture object (0 is the default camera)
 cap = cv2.VideoCapture(0)
 
-
-# Your existing emotion detection functions...
 # facec = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 faceDetect = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 labels = {0:"Angry",1:"Disgust",2:"Fear",3:"Happy",4:"Neutral",5:"Sad",6:"Surprise"}
@@ -81,22 +78,8 @@ def update_panel(frame, panel):
     panel.image = img
     
     
-def on_closing():
-    cap.release()
-    root.destroy()
 
 
-root = tk.Tk()
-root.geometry('1000x800')
-root.title("Emotion Recognition")
-
-# Create a panel to display video frames
-panel = tk.Label(root)
-panel.pack(padx=10, pady=10)
-
-# Create a label for speech emotion
-speech_label = tk.Label(root, text="Speech Emotion: ", font=("Helvetica", 14))
-speech_label.pack()
 
 # # Function to perform speech emotion recognition on an audio clip
 def recognize_speech_emotion(audio_clip,sr):
@@ -251,72 +234,75 @@ def mouth_state_detection(frame):
     # out.write(frame)
 	# show the frame
     cv2.imshow("Emotion Detection", frame)
-    
 
-def generate_frames():
-    while True:
-        success, frame = cap.read()
-        if not success:
-            break
-        else:
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+
 
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-
-def emotion_detection():
+def generate_frames():
     while True:
-        success, frame = cap.read()
-        if not success:
-            break
+        # Capture frame-by-frame
+        ret, frame = cap.read()
 
         # Perform facial emotion recognition
-        facial_emotion = recognize_facial_emotion(frame)
+        facial_emotion = recognize_facial_emotion(frame, panel)
         print("Facial Emotion:", facial_emotion)
+
+        # Perform mouth state detection
+        mouth_state_detection(frame)
 
         CHUNK = 1024
         FORMAT = pyaudio.paInt16
         CHANNELS = 1
         RATE = 8025
 
-        p = pyaudio.PyAudio()
-
-        stream = p.open(format=FORMAT,
-                        channels=CHANNELS,
-                        rate=RATE,
-                        input=True,
-                        frames_per_buffer=CHUNK)
-
-        print("Listening for emotion...")
-        
-        # Perform speech emotion recognition
+        # Record audio for speech emotion recognition
         audio_data = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
+
+        # Perform speech emotion recognition
         speech_emotion = recognize_speech_emotion(audio_data, RATE)
         print("Speech Emotion:", speech_emotion)
 
-        
-        # Your existing mouth state detection code...
-        mouth_state_detection(frame)
-        
-        # Display the resulting frame
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        # Update speech emotion label
+        speech_label_text = f"Speech Emotion: {speech_emotion}"
 
+        # Display the resulting frame
+        cv2.putText(frame, f"Speech: {speech_emotion}", (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        cv2.imshow("Emotion Detection", frame)
+
+        # Convert frame to JPEG
+        _, jpeg = cv2.imencode('.jpg', frame)
+        frame_bytes = jpeg.tobytes()
+
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n\r\n')
 
 @app.route('/video_feed')
 def video_feed():
-    return Response(emotion_detection(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    t1 = Thread(target=emotion_detection)
-    t1.start()
+    # Create VideoCapture object (0 is the default camera)
+    cap = cv2.VideoCapture(0)
+
+    # Load pre-trained facial emotion recognition model
+    facial_emotion_model = ExpressionModel('model_optimal_facial_emotion.json', 'model_weights_optimal_facial_emotion.h5')
+
+    # Load pre-trained speech emotion recognition model
+    speech_emotion_model = ExpressionModel("model_voice_emotion.json", "model_voice_emotion.h5")
+
+    # Create PyAudio object
+    p = pyaudio.PyAudio()
+
+    # Create PyAudio stream
+    stream = p.open(format=pyaudio.paInt16,
+                    channels=1,
+                    rate=8025,
+                    input=True,
+                    frames_per_buffer=1024)
+
     app.run(debug=True)
