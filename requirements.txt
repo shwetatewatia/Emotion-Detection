@@ -1,0 +1,8 @@
+numpy==1.21.4
+opencv-python==4.5.3
+librosa==0.8.1
+tensorflow==2.6.0
+pyaudio==0.2.11
+Pillow==8.2.0
+imutils==0.5.4
+scipy==1.7.3
