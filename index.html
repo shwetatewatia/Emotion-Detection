@@ -4,9 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emotion Recognition</title>
+    <!-- You can include additional stylesheets or scripts here if needed -->
 </head>
 <body>
     <h1>Emotion Recognition</h1>
+
+    <!-- Video feed from Flask backend -->
     <img id="video_feed" src="{{ url_for('video_feed') }}" width="640" height="480" />
+
+    <!-- Display facial emotion -->
+    <p id="facial_emotion">Facial Emotion: Loading...</p>
+
+    <!-- Display speech emotion -->
+    <p id="speech_emotion">Speech Emotion: Loading...</p>
+
+    <script>
+        // You can include additional JavaScript for dynamic behavior here
+    </script>
 </body>
 </html>
