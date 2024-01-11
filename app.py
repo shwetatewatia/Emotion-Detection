@@ -22,7 +22,6 @@ import cv2
 
 app = Flask(__name__)
 
-# ... (Paste your existing code here, excluding the Tkinter-related parts)
 def ExpressionModel(json_file, weights_file):
     with open(json_file,"r") as file:
         loaded_model_json = file.read()
@@ -51,7 +50,6 @@ EMOTIONS_LIST = ["Angry","Disgust","Fear","Happy","Neutral","Sad","Surprise"]
 
 def recognize_facial_emotion(frame, panel):
     # Preprocess frame for facial emotion recognition
-    # (you may need to resize or preprocess the frame based on your model's requirements)
     # ...
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = faceDetect.detectMultiScale(gray,1.3,3)
